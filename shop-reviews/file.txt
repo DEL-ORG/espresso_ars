@@ -1,0 +1,175 @@
+NAME: shop-reviews
+LAST DEPLOYED: Fri Mar  1 18:09:58 2024
+NAMESPACE: s6arsene
+STATUS: pending-install
+REVISION: 1
+HOOKS:
+---
+# Source: shop-reviews/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "shop-reviews-test-connection"
+  labels:
+    helm.sh/chart: shop-reviews-0.1.0
+    app.kubernetes.io/name: shop-reviews
+    app.kubernetes.io/instance: shop-reviews
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['shop-reviews:8092']
+  restartPolicy: Never
+MANIFEST:
+---
+# Source: shop-reviews/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shop-reviews-1-sa
+  labels:
+    app: shop-reviews-1
+---
+# Source: shop-reviews/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shop-reviews-1-sc
+type: Opaque
+data:
+  # Base64-encoded key-value pairs for sensitive data
+  username: YWRtaW4=  # Base64-encoded "admin"
+  password: MWYyZDFlMmU2N2Rm  # Base64-encoded "1f2d1e2e67df"
+  api_key: bXktYXBpLWtleQ==  # Base64-encoded "my-api-key"
+---
+# Source: shop-reviews/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-reviews-1-cm
+data:
+   SERVICE_VERSION: v1
+---
+# Source: shop-reviews/templates/configmap.yaml2
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-reviews-1-cm
+data:
+   SERVICE_VERSION: v2
+---
+# Source: shop-reviews/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: espresso-shop-reviews
+  labels:
+    app:  shop-reviews-1
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8092
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: shop-reviews-1
+    version: v2
+---
+# Source: shop-reviews/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-reviews-1
+  labels:
+    app: shop-reviews-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-reviews-1
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: shop-reviews-1
+        version: v2
+    spec:
+      serviceAccountName:  shop-reviews-1-sa
+      securityContext:
+        {}
+      containers:
+        - name: shop-reviews-1
+          securityContext:
+            {}
+          image: "nginx:1.16.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {}
+---
+# Source: shop-reviews/templates/deployment.yaml2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-reviews-2
+  labels:
+    app: shop-reviews-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-reviews-2
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: shop-reviews-1
+        version: v2
+    spec:
+      serviceAccountName:  shop-reviews-2-sa
+      securityContext:
+        {}
+      containers:
+        - name: shop-reviews-2
+          securityContext:
+            {}
+          image: "nginx:1.16.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {}
+
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace s6arsene -l "app.kubernetes.io/name=shop-reviews,app.kubernetes.io/instance=shop-reviews" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace s6arsene $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace s6arsene port-forward $POD_NAME 8080:$CONTAINER_PORT
