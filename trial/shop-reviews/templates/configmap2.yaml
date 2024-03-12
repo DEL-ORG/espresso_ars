@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name1 }}-cm
+data:
+   SERVICE_VERSION: {{ .Values.env2.SERVICE_VERSION }}
+   POSTGRES_USER: username
+   POSTGRES_DB: postgres
